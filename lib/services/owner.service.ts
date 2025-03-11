@@ -72,6 +72,7 @@ class OwnerService {
       
       return !!result;
     } catch (error) {
+      console.log(error);
       throw new Error('Error deleting owner from database');
     }
   }
