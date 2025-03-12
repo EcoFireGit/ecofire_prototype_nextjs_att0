@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { TasksButton } from "@/components/tasks/tasks-button";
 
 export type Job = {
   id: string;
@@ -28,7 +29,8 @@ export type Job = {
 export const columns = (
   onEdit: (job: Job) => void,
   onDelete: (id: string) => void,
-  onSelect: (jobId: string, checked: boolean) => void
+  onSelect: (jobId: string, checked: boolean) => void,
+  onOpenTasksSidebar: (job: Job) => void
 ): ColumnDef<Job>[] => [
   {
     id: "select",
@@ -113,6 +115,7 @@ export const columns = (
 
       return (
         <div className="flex items-center gap-2">
+          <TasksButton job={job} onOpenTasksSidebar={onOpenTasksSidebar} />
           <Button variant="ghost" size="icon" onClick={() => onEdit(job)}>
             <Edit className="h-4 w-4" />
           </Button>

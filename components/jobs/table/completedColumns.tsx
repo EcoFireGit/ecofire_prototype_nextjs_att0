@@ -15,11 +15,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Job } from "./columns"
 import { Checkbox } from "@/components/ui/checkbox"
+import { TasksButton } from "@/components/tasks/tasks-button"
 
 export const completedColumns = (
   onEdit: (job: Job) => void,
   onDelete: (id: string) => void,
-  onSelect: (jobId: string, checked: boolean) => void
+  onSelect: (jobId: string, checked: boolean) => void,
+  onOpenTasksSidebar: (job: Job) => void
 ): ColumnDef<Job>[] => [
   {
     id: "select",
@@ -65,7 +67,7 @@ export const completedColumns = (
     header: "Owner",
   },
   {
-    accessorKey: "businessFunctionName", 
+    accessorKey: "businessFunctionName",
     header: "Business Function",
     cell: ({ row }) => {
       const businessFunctionName = row.getValue("businessFunctionName") as string | undefined;
@@ -92,10 +94,10 @@ export const completedColumns = (
       const job = row.original;
       return (
         <div className="flex items-center gap-2">
+          <TasksButton job={job} onOpenTasksSidebar={onOpenTasksSidebar} />
           <Button variant="ghost" size="icon" onClick={() => onEdit(job)}>
             <Edit className="h-4 w-4" />
           </Button>
-
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">

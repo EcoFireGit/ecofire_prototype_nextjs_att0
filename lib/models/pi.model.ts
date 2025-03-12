@@ -1,4 +1,4 @@
-// lib/models/qbo.model.ts
+// lib/models/pi.model.ts
 import mongoose from "mongoose";
 
 export interface PIs extends mongoose.Document {

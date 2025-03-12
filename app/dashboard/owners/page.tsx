@@ -18,13 +18,20 @@ export default function OwnersPage() {
   const [currentOwner, setCurrentOwner] = useState<{id: string, name: string}>({id: '', name: ''});
   const { toast } = useToast();
 
+  const convertOwnersToTableData = (ownersData: any[]): Owner[] => {
+    return ownersData.map(owner => ({
+      id: owner._id, // Ensure we have an id field
+      name: owner.name
+    }));
+  };
+
   const fetchOwners = async () => {
     try {
       const response = await fetch('/api/owners');
       const result = await response.json();
       
       if (response.ok) {
-        setOwners(result);
+        setOwners(convertOwnersToTableData(result));
       } else {
         setError(result.error || 'Failed to fetch owners');
       }

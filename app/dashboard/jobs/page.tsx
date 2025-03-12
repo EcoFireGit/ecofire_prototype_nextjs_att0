@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { completedColumns } from "@/components/jobs/table/completedColumns";
+import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
+
 
 // Updated to include business functions
 function convertJobsToTableData(
@@ -50,6 +52,10 @@ export default function JobsPage() {
   const [selectedCompletedJobs, setSelectedCompletedJobs] = useState<
     Set<string>
   >(new Set());
+  const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
+
   const { toast } = useToast();
 
   // Fetch business functions
@@ -340,6 +346,12 @@ export default function JobsPage() {
     setDialogOpen(true);
   };
 
+  // New function to handle opening the tasks sidebar
+  const handleOpenTasksSidebar = (job: Job) => {
+    setSelectedJob(job);
+    setTasksSidebarOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center">
@@ -367,7 +379,7 @@ export default function JobsPage() {
         </div>
 
         <DataTable
-          columns={columns(handleOpenEdit, handleDelete, handleActiveSelect)}
+          columns={columns(handleOpenEdit, handleDelete, handleActiveSelect, handleOpenTasksSidebar)}
           data={activeJobs}
         />
 
@@ -379,7 +391,8 @@ export default function JobsPage() {
           columns={completedColumns(
             handleOpenEdit,
             handleDelete,
-            handleCompletedSelect
+            handleCompletedSelect,
+            handleOpenTasksSidebar
           )}
           data={completedJobs}
         />
@@ -390,6 +403,13 @@ export default function JobsPage() {
           onOpenChange={setDialogOpen}
           onSubmit={editingJob ? handleEdit : handleCreate}
           initialData={editingJob}
+        />
+        
+        <TasksSidebar
+          open={tasksSidebarOpen}
+          onOpenChange={setTasksSidebarOpen}
+          selectedJob={selectedJob}
+          owners={["Owner1", "Owner2"]}
         />
 
         {/* Toast for active jobs selection */}

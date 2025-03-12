@@ -43,14 +43,14 @@ export function PISTable<TData, TValue>({
   });
 
   return (
-    
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead 
+                  <TableHead
                     key={header.id}
                     className="font-semibold"
                     onClick={header.column.getToggleSortingHandler()}
@@ -90,12 +90,6 @@ export function PISTable<TData, TValue>({
           )}
         </TableBody>
       </Table>
-
-       
-
-        
-
-      
-
+    </div>
   );
 }

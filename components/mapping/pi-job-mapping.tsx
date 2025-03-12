@@ -1,26 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MappingJP, columns, convertJPMappingToTableData } from "@/components/pi-job-mapping/table/columns";
+import { MappingJPTable } from "@/components/pi-job-mapping/table/pi-job-mapping-table";
+import { MappingDialog } from "@/components/pi-job-mapping/pi-job-mapping-dialog";
 import { Button } from "@/components/ui/button";
-import { PIJobMappingDialog, MappingFormData } from "@/components/pi-job-mapping/pi-job-mapping-dialog";
-import { columns, MappingTableData, convertMappingsToTableData } from "@/components/pi-job-mapping/table/columns";
-import { PIJobMappingTable } from "@/components/pi-job-mapping/table/pi-job-mapping-table";
-import { useToast } from "@/hooks/use-toast";
-import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
-import { PIs } from "@/lib/models/pi.model";
-import { Jobs } from "@/lib/models/job.model";
-import { useUser } from "@clerk/nextjs";
 import { Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@clerk/nextjs";
 
-export default function PIJobMappingsPage() {
-  const [mappings, setMappings] = useState<JobPiMapping[]>([]);
-  const [pisList, setPisList] = useState<PIs[]>([]);
-  const [jobsList, setJobsList] = useState<Jobs[]>([]);
-  const [tableData, setTableData] = useState<MappingTableData[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [selectedMapping, setSelectedMapping] = useState<JobPiMapping | undefined>(undefined);
+export default function PiJobMappingPage() {
+  const [data, setData] = useState<MappingJP[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPI, setEditingPI] = useState<MappingJP | undefined>(undefined);
+  const [pisList, setPisList] = useState<any[]>([]);
+  const [jobsList, setJobsList] = useState<any[]>([]);
   
   const { toast } = useToast();
   const { user, isLoaded } = useUser();
@@ -28,8 +24,8 @@ export default function PIJobMappingsPage() {
   const fetchData = async () => {
     if (!isLoaded || !user) return;
     
-    setLoading(true);
     try {
+      setLoading(true);
       // Fetch data from API endpoints
       const [pisResponse, jobsResponse, mappingsResponse] = await Promise.all([
         fetch('/api/pis'),
@@ -43,20 +39,20 @@ export default function PIJobMappingsPage() {
       
       const pisData = await pisResponse.json();
       const jobsData = await jobsResponse.json();
-      const mappingsData = await mappingsResponse.json();
+      const mappingsResult = await mappingsResponse.json();
       
       setPisList(pisData.data || []);
       setJobsList(jobsData.data || []);
-      setMappings(mappingsData.data || []);
       
-      // Convert to table data
-      setTableData(convertMappingsToTableData(
-        mappingsData.data || [], 
-        pisData.data || [], 
-        jobsData.data || []
-      ));
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      if (mappingsResult.success) {
+        const tableData = convertJPMappingToTableData(mappingsResult.data);
+        setData(tableData);
+      } else {
+        setError(mappingsResult.error);
+      }
+    } catch (err) {
+      setError('Failed to fetch Mapping');
+      console.error('Error fetching Mapping:', err);
       toast({
         title: "Error",
         description: "Failed to load data",
@@ -73,125 +69,142 @@ export default function PIJobMappingsPage() {
     }
   }, [isLoaded, user]);
 
-  const handleCreateMapping = () => {
-    setDialogMode('create');
-    setSelectedMapping(undefined);
-    setDialogOpen(true);
-  };
-
-  const handleEditMapping = (mappingData: MappingTableData) => {
-    const mapping = mappings.find(m => m._id === mappingData.id);
-    if (mapping) {
-      setSelectedMapping(mapping);
-      setDialogMode('edit');
-      setDialogOpen(true);
-    }
-  };
-
-  const handleDeleteMapping = async (id: string) => {
+  const handleCreate = async (PIData: Partial<MappingJP>) => {
     try {
-      const response = await fetch(`/api/pi-job-mappings/${id}`, {
-        method: 'DELETE',
+      const response = await fetch('/api/pi-job-mappings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(PIData),
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete mapping');
-      }
-      
-      toast({
-        title: "Success",
-        description: "Mapping deleted successfully",
-      });
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting mapping:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete mapping",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const handleSubmitMapping = async (formData: MappingFormData) => {
-    try {
-      if (dialogMode === 'create') {
-        const response = await fetch('/api/pi-job-mappings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create mapping');
-        }
-        
+      const result = await response.json();
+
+      if (result.success) {
         toast({
           title: "Success",
           description: "Mapping created successfully",
         });
+        fetchData();
+        setDialogOpen(false);
       } else {
-        if (formData.id) {
-          const response = await fetch(`/api/pi-job-mappings/${formData.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update mapping');
-          }
-          
-          toast({
-            title: "Success",
-            description: "Mapping updated successfully",
-          });
-        }
+        throw new Error(result.error);
       }
-      fetchData();
     } catch (error: any) {
-      console.error('Error saving mapping:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to save mapping",
+        description: error.message || "Failed to create Mapping",
         variant: "destructive",
       });
     }
   };
 
+  const handleEdit = async (MappingData: Partial<MappingJP>) => {
+    if (!editingPI) return;
+
+    try {
+      const response = await fetch(`/api/pi-job-mappings/${editingPI.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(MappingData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Mapping updated successfully",
+        });
+        fetchData();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update Mapping",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/pi-job-mappings/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Mapping deleted successfully",
+        });
+        fetchData();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete Mapping",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenEdit = (MJP: MappingJP) => {
+    setEditingPI(MJP);
+    setDialogOpen(true);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingPI(undefined);
+    setDialogOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading Mapping between Jobs and PI...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">PI-Job Mappings</h1>
-        <Button onClick={handleCreateMapping} className="bg-blue-500 hover:bg-blue-600">
+        <h1 className="text-2xl font-bold">Mapping Job and PI</h1>
+        <Button onClick={handleOpenCreate} className="bg-blue-500 hover:bg-blue-600">
           <Plus className="h-4 w-4 mr-2" />
-          Map PI to Job
+          Add Mapping
         </Button>
       </div>
+      
+      <MappingJPTable 
+        columns={columns(handleOpenEdit, handleDelete)} 
+        data={data} 
+      />
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <p>Loading...</p>
-        </div>
-      ) : (
-        <PIJobMappingTable
-          columns={columns(handleEditMapping, handleDeleteMapping)}
-          data={tableData}
-        />
-      )}
-
-      <PIJobMappingDialog
-        mode={dialogMode}
+      <MappingDialog
+        mode={editingPI ? 'edit' : 'create'}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSubmit={handleSubmitMapping}
-        initialData={selectedMapping}
+        onSubmit={editingPI ? handleEdit : handleCreate}
+        initialData={editingPI}
         pisList={pisList}
         jobsList={jobsList}
       />

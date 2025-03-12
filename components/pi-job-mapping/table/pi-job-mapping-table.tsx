@@ -23,12 +23,12 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
 }
 
-export function PIJobMappingTable<TData, TValue>({
+export function MappingJPTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "piName", desc: false }, // Default sort by PI name ascending
+    { id: "piImpactValue", desc: false }, // Sort alphabetically by name
   ]);
 
   const table = useReactTable({
@@ -42,7 +42,6 @@ export function PIJobMappingTable<TData, TValue>({
     onSortingChange: setSorting,
   });
 
-  
   return (
     <div className="rounded-md border">
       <Table>
@@ -51,7 +50,7 @@ export function PIJobMappingTable<TData, TValue>({
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead 
+                  <TableHead
                     key={header.id}
                     className="font-semibold"
                     onClick={header.column.getToggleSortingHandler()}
@@ -85,25 +84,8 @@ export function PIJobMappingTable<TData, TValue>({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No PI-Job mappings found.
+                No Mapping found.
               </TableCell>
-            </TableRow>
-          )}
-          
-          {/* Summary row with properly aligned columns */}
-          {table.getRowModel().rows?.length > 0 && (
-            <TableRow className="bg-gray-50">
-              {/* First 4 cells - leave empty */}
-              <TableCell colSpan={4} className="text-right font-medium">
-                Total Impact:
-              </TableCell>
-              
-              
-              {/* Notes - empty */}
-              <TableCell></TableCell>
-              
-              {/* Actions column - empty */}
-              <TableCell></TableCell>
             </TableRow>
           )}
         </TableBody>

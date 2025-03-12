@@ -9,6 +9,7 @@ export interface Jobs extends mongoose.Document {
   userId: string;
   dueDate?: Date;
   isDone: boolean;
+  impact?: Number;
 }
 
 // interface tasks {
@@ -52,6 +53,11 @@ const JobSchema = new mongoose.Schema<Jobs>({
     type: Boolean,
     default: false,
     required: true
+  },
+  impact: {
+    type: Number,
+    default: 0,
+    required: false 
   }
 
 });

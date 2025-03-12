@@ -1,6 +1,7 @@
 import BusinessFunction from '../models/business-function.model';
 import { BusinessFunction as BusinessFunctionType } from '../models/business-function.model';
 import dbConnect from '../mongodb';
+import DefaultsTracker from '../models/business-funtions-defaults-tracker.model';
 
 export class BusinessFunctionService {
   private defaultFunctions = [
@@ -11,20 +12,38 @@ export class BusinessFunctionService {
     "Sales"
   ];
 
+  // Track if defaults have been initialized for a user
+  // Create a separate collection to track initialization status
+  private async hasInitializedDefaults(userId: string): Promise<boolean> {
+    try {
+      await dbConnect();
+      const tracker = await DefaultsTracker.findOne({ userId });
+      return !!tracker;
+    } catch (error) {
+      console.error('Error checking default initialization status:', error);
+      return false;
+    }
+  }
+
   async initializeDefaultFunctions(userId: string): Promise<void> {
     try {
       await dbConnect();
-      const existingFunctions = await BusinessFunction.find({ userId });
-     
-      if (existingFunctions.length === 0) {
-        const defaultFunctions = this.defaultFunctions.map(name => ({
-          name,
-          userId,
-          isDefault: true
-        }));
-       
-        await BusinessFunction.insertMany(defaultFunctions);
-      }
+      
+      // We already checked initialization status in getAllBusinessFunctions
+      const defaultFunctions = this.defaultFunctions.map(name => ({
+        name,
+        userId,
+        isDefault: true
+      }));
+      
+      await BusinessFunction.insertMany(defaultFunctions);
+      
+      // Mark that we've initialized defaults for this user
+      await DefaultsTracker.findOneAndUpdate(
+        { userId },
+        { initialized: true },
+        { upsert: true }
+      );
     } catch (error) {
       throw new Error('Error initializing default business functions');
     }
@@ -33,7 +52,17 @@ export class BusinessFunctionService {
   async getAllBusinessFunctions(userId: string): Promise<BusinessFunctionType[]> {
     try {
       await dbConnect();
-      await this.initializeDefaultFunctions(userId);
+      
+      // Only initialize defaults on the very first call for this user
+      // when there are no existing functions
+      const existingFunctions = await BusinessFunction.countDocuments({ userId });
+      if (existingFunctions === 0) {
+        const initialized = await this.hasInitializedDefaults(userId);
+        if (!initialized) {
+          await this.initializeDefaultFunctions(userId);
+        }
+      }
+      
       const functions = await BusinessFunction.find({ userId }).lean();
       return JSON.parse(JSON.stringify(functions));
     } catch (error) {
@@ -89,12 +118,11 @@ export class BusinessFunctionService {
     try {
       await dbConnect();
       const businessFunction = await BusinessFunction.findOne({ _id: id, userId });
-     
+      
       if (!businessFunction) {
         return false;
       }
       
-      // Allow deletion of default business functions
       const result = await BusinessFunction.findOneAndDelete({
         _id: id,
         userId

@@ -1,4 +1,4 @@
-// components/pi-job-mapping/table/columns.tsx
+// components/PIS/table/columns.tsx
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,50 +14,43 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Import the database model types
+// Import the database model type
 import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
-import { PIs } from "@/lib/models/pi.model";
-import { Jobs } from "@/lib/models/job.model";
 
 // Table-specific type that converts from the database model
-export type MappingTableData = {
+export type MappingJP = {
   id: string;
-  piId: string;
-  piName: string;
   jobId: string;
   jobName: string;
-  piTarget: number;
+  piName: string;
+  piId: string;
   piImpactValue: number;
+  piTarget: number; // Added field
   notes?: string;
 };
 
-// Function to convert from database models to table data
-export function convertMappingsToTableData(
-  mappings: JobPiMapping[], 
-  pisList: PIs[], 
-  jobsList: Jobs[]
-): MappingTableData[] {
-  return mappings.map(mapping => {
-    const pi = pisList.find(pi => pi._id === mapping.piId);
-    const job = jobsList.find(job => job._id === mapping.jobId);
-    
-    return {
-      id: mapping._id,
-      piId: mapping.piId,
-      piName: pi?.name || 'Unknown PI',
-      jobId: mapping.jobId,
-      jobName: job?.title || 'Unknown Job',
-      piTarget: mapping.piTarget,
-      piImpactValue: mapping.piImpactValue,
-      notes: mapping.notes
-    };
-  });
+// Function to convert from database model to table data
+export function convertJPMappingToTableData(JPMap: JobPiMapping[]): MappingJP[] {
+  return JPMap.map(JobPiMapping => ({
+    id: JobPiMapping._id,
+    jobId: JobPiMapping.jobId,
+    piId: JobPiMapping.piId || '',
+    piImpactValue: JobPiMapping.piImpactValue || 0,
+    jobName: JobPiMapping.jobName,
+    piName: JobPiMapping.piName || '',
+    piTarget: JobPiMapping.piTarget || 0, // Added field
+    notes: JobPiMapping.notes || ''
+  }));
 }
 
 export const columns = (
-  onEdit: (mapping: MappingTableData) => void,
+  onEdit: (JP: MappingJP) => void,
   onDelete: (id: string) => void
-): ColumnDef<MappingTableData>[] => [
+): ColumnDef<MappingJP>[] => [
+  {
+    accessorKey: "jobName",
+    header: "Job name",
+  },
   {
     accessorKey: "piName",
     header: "PI Name",
@@ -69,10 +62,6 @@ export const columns = (
       const value = row.getValue("piTarget") as number;
       return value.toString();
     }
-  },
-  {
-    accessorKey: "jobName",
-    header: "Job Title",
   },
   {
     accessorKey: "piImpactValue",
@@ -87,19 +76,25 @@ export const columns = (
     header: "Notes",
     cell: ({ row }) => {
       const notes = row.getValue("notes") as string | undefined;
-      return notes || "";
-    }
+      if (!notes) return "No notes";
+      // Truncate long notes and add ellipsis
+      return (
+        <div className="max-h-[100px] min-h-[60px] w-[300px] overflow-y-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm break-words whitespace-normal">
+          {notes}
+        </div>
+      );
+    },
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const mapping = row.original;
+      const JP = row.original;
       return (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onEdit(mapping)}
+            onClick={() => onEdit(JP)}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -114,13 +109,13 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the mapping between
-                  "{mapping.piName}" and "{mapping.jobName}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the Mapping between
+                  "{JP.jobName}" and "{JP.piName}" and remove it from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(mapping.id)}>
+                <AlertDialogAction onClick={() => onDelete(JP.id)}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

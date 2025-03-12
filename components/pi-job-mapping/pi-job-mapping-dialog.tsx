@@ -1,4 +1,5 @@
-// components/pi-job-mapping/pi-job-mapping-dialog.tsx
+// components/pis/pi-dialog.tsx
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,57 +19,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
-import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
-import { Jobs } from "@/lib/models/job.model";
-import { PIs } from "@/lib/models/pi.model";
+import { MappingJP } from "./table/columns";
+import { Job } from "@/components/jobs/table/columns";
+import { PI } from "@/components/pis/table/columns";
 
-export type MappingFormData = {
-  id?: string;
-  jobId: string;
-  piId: string;
- // jobName: string;
-  //piName: string;
-  piTarget: number;
-  piImpactValue: number;
-  notes?: string;
-  
-};
-
-interface PIJOBMappingDialogProps {
+interface MappingDialogProps {
   mode: 'create' | 'edit';
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (mapping: MappingFormData) => void;
-  initialData?: JobPiMapping;
-  pisList: PIs[];
-  jobsList: Jobs[];
+  onSubmit: (mapping: Partial<MappingJP>) => void;
+  initialData?: MappingJP;
+  pisList?: any[];
+  jobsList?: any[];
 }
 
-export function PIJobMappingDialog({ 
+export function MappingDialog({ 
   mode, 
   open, 
   onOpenChange, 
   onSubmit, 
   initialData,
-  pisList,
-  jobsList
-}: PIJOBMappingDialogProps) {
-  const [formData, setFormData] = useState<MappingFormData>(() => {
+  pisList = [],
+  jobsList = []
+}: MappingDialogProps) {
+  const [formData, setFormData] = useState<Partial<MappingJP>>(() => {
     if (initialData) {
       return {
-        id: initialData._id,
-        piId: initialData.piId,
-        jobId: initialData.jobId,
-        piTarget: initialData.piTarget,
-        piImpactValue: initialData.piImpactValue,
-        notes: initialData.notes
+        id: initialData.id,
+        jobId: initialData.jobId || '',
+        jobName: initialData.jobName || '',
+        piId: initialData.piId || '',
+        piName: initialData.piName || '',
+        piImpactValue: initialData.piImpactValue || 0,
+        piTarget: initialData.piTarget || 0,
+        notes: initialData.notes || ''
       };
     }
     return {
-      piId: '',
       jobId: '',
-      piTarget: 0,
+      jobName: '',
+      piId: '',
+      piName: '',
       piImpactValue: 0,
+      piTarget: 0,
       notes: ''
     };
   });
@@ -77,27 +70,42 @@ export function PIJobMappingDialog({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        id: initialData._id,
-        piId: initialData.piId,
-        jobId: initialData.jobId,
-        piTarget: initialData.piTarget,
-        piImpactValue: initialData.piImpactValue,
-        notes: initialData.notes
+        id: initialData.id,
+        jobId: initialData.jobId || '',
+        jobName: initialData.jobName || '',
+        piId: initialData.piId || '',
+        piName: initialData.piName || '',
+        piImpactValue: initialData.piImpactValue || 0,
+        piTarget: initialData.piTarget || 0,
+        notes: initialData.notes || ''
       });
     } else {
       setFormData({
-        piId: '',
         jobId: '',
-        piTarget: 0,
+        jobName: '',
+        piId: '',
+        piName: '',
         piImpactValue: 0,
+        piTarget: 0,
         notes: ''
       });
     }
   }, [initialData, open]);
 
+  useEffect(() => {
+    console.log('formData updated:', formData);
+  }, [formData]);
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Create a copy of the form data for submission
+    const submissionData = { ...formData };
+    
+    // Submit the data to the parent component
+    onSubmit(submissionData);
+    
+    // Close the dialog
     onOpenChange(false);
   };
 
@@ -107,6 +115,7 @@ export function PIJobMappingDialog({
     setFormData({
       ...formData,
       piId,
+      piName: selectedPI ? selectedPI.name : '',
       piTarget: selectedPI ? selectedPI.targetValue : 0
     });
   };
@@ -116,11 +125,12 @@ export function PIJobMappingDialog({
     
     setFormData({
       ...formData,
-      jobId
+      jobId,
+      jobName: selectedJob ? selectedJob.title : ''
     });
   };
 
-  const handleNumberChange = (field: keyof MappingFormData, value: string) => {
+  const handleNumberChange = (field: keyof MappingJP, value: string) => {
     const numValue = value === '' ? 0 : Number(value);
     setFormData({...formData, [field]: numValue});
   };
@@ -131,21 +141,22 @@ export function PIJobMappingDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Map PI to Job' : 'Edit PI-Job Mapping'}
+              {mode === 'create' ? 'Add Mapping' : 'Edit Mapping'}
             </DialogTitle>
           </DialogHeader>
+          
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="piId" className="text-left">
                 PI name <span className="text-red-500">*</span>
               </Label>
               <Select 
-                value={formData.piId} 
+                value={formData.piId as string} 
                 onValueChange={handlePIChange}
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an option" />
+                  <SelectValue placeholder="Select a PI" />
                 </SelectTrigger>
                 <SelectContent>
                   {pisList.map(pi => (
@@ -164,7 +175,7 @@ export function PIJobMappingDialog({
               <Input
                 id="piTarget"
                 type="number"
-                value={formData.piTarget}
+                value={formData.piTarget || 0}
                 onChange={(e) => handleNumberChange('piTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -178,12 +189,12 @@ export function PIJobMappingDialog({
                 Job name <span className="text-red-500">*</span>
               </Label>
               <Select 
-                value={formData.jobId} 
+                value={formData.jobId as string} 
                 onValueChange={handleJobChange}
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an option" />
+                  <SelectValue placeholder="Select a Job" />
                 </SelectTrigger>
                 <SelectContent>
                   {jobsList.map(job => (
@@ -195,10 +206,9 @@ export function PIJobMappingDialog({
               </Select>
             </div>
             
-           
             <div className="grid items-center gap-2">
               <Label htmlFor="piImpactValue" className="text-left">
-                PI Impact <span className="text-red-500">*</span>
+                PI Impact Value <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="piImpactValue"
@@ -212,7 +222,7 @@ export function PIJobMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
-                Notes
+                PI notes
               </Label>
               <Textarea
                 id="notes"
@@ -225,7 +235,7 @@ export function PIJobMappingDialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Map PI to Job' : 'Save Changes'}
+              {mode === 'create' ? 'Map' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

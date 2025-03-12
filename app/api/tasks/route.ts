@@ -1,13 +1,10 @@
-// app/api/PIs/route.ts
-// description: Get all PIs
-
 import { NextResponse } from 'next/server';
-import { MappingService } from '@/lib/services/pi-job-mapping.service';
+import { TaskService } from '@/lib/services/task.service';
 import { auth } from '@clerk/nextjs/server';
 
-const JPMappingService = new MappingService();
+const taskService = new TaskService();
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -19,15 +16,29 @@ export async function GET() {
         { status: 401 }
       );
     }
-    const getMapping = await JPMappingService.getAllMappingJP(userId);
+
+    const url = new URL(request.url);
+    const jobId = url.searchParams.get('jobId');
+
+    if (!jobId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Job ID is required'
+        },
+        { status: 400 }
+      );
+    }
+
+    const tasks = await taskService.getTasksByJobId(jobId, userId);
    
     return NextResponse.json({
       success: true,
-      count: getMapping.length,
-      data: getMapping
+      count: tasks.length,
+      data: tasks
     });
   } catch (error) {
-    console.error('Error in GET /api/MappingJP:', error);
+    console.error('Error in GET /api/tasks:', error);
     return NextResponse.json(
       {
         success: false,
@@ -50,14 +61,27 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
-    const MappingData = await request.json();
-    const JP = await JPMappingService.CreateMapping(MappingData, userId);
+    
+    const taskData = await request.json();
+    
+    if (!taskData.jobId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Job ID is required'
+        },
+        { status: 400 }
+      );
+    }
+    
+    const task = await taskService.createTask(taskData, userId);
+    
     return NextResponse.json({
       success: true,
-      data: JP
+      data: task
     }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/MappingJP:', error);
+    console.error('Error in POST /api/tasks:', error);
     return NextResponse.json(
       {
         success: false,

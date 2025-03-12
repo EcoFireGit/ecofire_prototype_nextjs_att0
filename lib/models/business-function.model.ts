@@ -5,6 +5,7 @@ export interface BusinessFunction extends mongoose.Document {
   name: string;
   userId: string;
   isDefault?: boolean;
+  isHidden?: boolean;
 }
 
 export interface BusinessFunctionForDropdown {
@@ -25,7 +26,8 @@ const BusinessFunctionSchema = new mongoose.Schema<BusinessFunction>({
   isDefault: {
     type: Boolean,
     default: false
-  }
+  },
+  isHidden: { type: Boolean, default: false }
 });
 
 export default mongoose.models.BusinessFunction || 
