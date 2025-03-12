@@ -24,7 +24,7 @@ export type Job = {
   owner?: string;
   dueDate?: string;
   isDone: boolean;
-  impact: number; // Made impact a required property with default value
+  impact?: number; // Added impact property
 };
 
 export const columns = (
@@ -113,8 +113,8 @@ export const columns = (
     accessorKey: "impact",
     header: "Impact",
     cell: ({ row }) => {
-      const value = row.getValue("impact");
-      return value !== undefined && value !== null ? value.toString() : "N/A";
+      const value = row.getValue("impact") as number | undefined;
+      return value !== undefined ? value.toString() : "N/A";
     },
   },
   {
