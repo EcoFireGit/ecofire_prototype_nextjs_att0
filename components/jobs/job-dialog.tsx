@@ -38,7 +38,7 @@ const emptyFormState = {
   title: "",
   notes: "",
   owner: "",
-  businessFunctionId: 'none',
+  businessFunctionId: "none",
   dueDate: "",
   isDone: false,
   impact: 0, // Added impact field
@@ -100,7 +100,7 @@ export function JobDialog({
             result.data.map((bf: any) => ({
               id: bf._id,
               name: bf.name,
-            }))
+            })),
           );
         } else {
           throw new Error(result.error || "Failed to fetch business functions");
@@ -236,13 +236,18 @@ export function JobDialog({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="impact" className="text-right">Impact</Label>
+              <Label htmlFor="impact" className="text-right">
+                Impact
+              </Label>
               <Input
                 id="impact"
                 type="number"
                 value={formData.impact || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, impact: parseInt(e.target.value, 10) || 0 })
+                  setFormData({
+                    ...formData,
+                    impact: Number(e.target.value) || 0,
+                  })
                 }
                 className="col-span-3"
                 placeholder="Enter impact value"
