@@ -19,7 +19,7 @@ export async function GET() {
       );
     }
     const jobs = await jobService.getAllJobs(userId);
-   
+
     return NextResponse.json({
       success: true,
       count: jobs.length,
@@ -50,8 +50,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const jobData = await request.json();
-    const job = await jobService.createJob(jobData, userId);
+    const { title, description, businessFunctionId, impact } = await request.json();
+    const newJob = {
+      title,
+      description,
+      businessFunctionId,
+      impact: impact ? Number(impact) : undefined,
+      status: "active",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const job = await jobService.createJob(newJob, userId);
 
     return NextResponse.json({
       success: true,

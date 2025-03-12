@@ -23,7 +23,7 @@ export async function GET(
       );
     }
     const job = await jobService.getJobById(id, userId);
- 
+
     if (!job) {
       return NextResponse.json(
         {
@@ -66,8 +66,18 @@ export async function PUT(
       );
     }
     const updateData = await request.json();
-    const updatedJob = await jobService.updateJob(id, userId, updateData);
-    if (!updatedJob) {
+    const { title, description, businessFunctionId, impact, status } = updateData;
+
+    const updatedJob = {
+      ...(title && { title }),
+      ...(description !== undefined && { description }),
+      ...(businessFunctionId && { businessFunctionId }),
+      ...(impact !== undefined && { impact: Number(impact) }),
+      ...(status && { status }),
+      updatedAt: new Date(),
+    };
+    const updatedJobResult = await jobService.updateJob(id, userId, updatedJob);
+    if (!updatedJobResult) {
       return NextResponse.json(
         {
           success: false,
@@ -78,7 +88,7 @@ export async function PUT(
     }
     return NextResponse.json({
       success: true,
-      data: updatedJob
+      data: updatedJobResult
     });
   } catch (error) {
     console.error(`Error in PUT /api/jobs/${id}:`, error);

@@ -24,6 +24,7 @@ export type Job = {
   owner?: string;
   dueDate?: string;
   isDone: boolean;
+  impact?: number; // Added impact property
 };
 
 export const columns = (
@@ -106,6 +107,14 @@ export const columns = (
         month: "short",
         day: "numeric",
       });
+    },
+  },
+  {
+    accessorKey: "impact",
+    header: "Impact",
+    cell: ({ row }) => {
+      const value = row.getValue("impact") as number | undefined;
+      return value !== undefined ? value.toString() : "N/A";
     },
   },
   {
