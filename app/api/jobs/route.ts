@@ -1,8 +1,8 @@
 // route: /api/jobs
 // description: Get all jobs
-import { NextResponse } from 'next/server';
-import { JobService } from '@/lib/services/job.service';
-import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from "next/server";
+import { JobService } from "@/lib/services/job.service";
+import { auth } from "@clerk/nextjs/server";
 
 const jobService = new JobService();
 
@@ -13,9 +13,9 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          error: 'Unauthorized'
+          error: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const jobs = await jobService.getAllJobs(userId);
@@ -23,16 +23,16 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       count: jobs.length,
-      data: jobs
+      data: jobs,
     });
   } catch (error) {
-    console.error('Error in GET /api/jobs:', error);
+    console.error("Error in GET /api/jobs:", error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal Server Error'
+        error: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -44,37 +44,30 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Unauthorized'
+          error: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    const { title, description, businessFunctionId, impact } = await request.json();
-    const newJob = {
-      title,
-      description,
-      businessFunctionId,
-      impact: impact ? Number(impact) : undefined,
-      status: "active",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
+    const newJob = await request.json();
     const job = await jobService.createJob(newJob, userId);
 
-    return NextResponse.json({
-      success: true,
-      data: job
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: job,
+      },
+      { status: 201 },
+    );
   } catch (error) {
-    console.error('Error in POST /api/jobs:', error);
+    console.error("Error in POST /api/jobs:", error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal Server Error'
+        error: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
