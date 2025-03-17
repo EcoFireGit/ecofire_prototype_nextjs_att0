@@ -1,16 +1,15 @@
-// app/api/tasks/[id]/route.ts
-
-import { NextRequest, NextResponse } from 'next/server';
-import { TaskService } from '@/lib/services/task.service';
+// route: /api/pis/:id
+// description: Get PI by id
+import { NextResponse } from 'next/server';
+import { PIService } from '@/lib/services/pi.service';
 import { auth } from '@clerk/nextjs/server';
 
-const taskService = new TaskService();
+const piService = new PIService();
 
 export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -22,25 +21,23 @@ export async function GET(
         { status: 401 }
       );
     }
-    
-    const task = await taskService.getTaskById(id, userId);
- 
-    if (!task) {
+    const pi = await piService.getPIById(params.id, userId);
+  
+    if (!pi) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Task not found'
+          error: 'PI not found'
         },
         { status: 404 }
       );
     }
-    
     return NextResponse.json({
       success: true,
-      data: task
+      data: pi
     });
   } catch (error) {
-    console.error(`Error in GET /api/tasks/${id}:`, error);
+    console.error(`Error in GET /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -52,10 +49,9 @@ export async function GET(
 }
 
 export async function PUT(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -67,26 +63,26 @@ export async function PUT(
         { status: 401 }
       );
     }
-    
+
     const updateData = await request.json();
-    const updatedTask = await taskService.updateTask(id, userId, updateData);
-    
-    if (!updatedTask) {
+    const updatedPI = await piService.updatePI(params.id, userId, updateData);
+
+    if (!updatedPI) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Task not found'
+          error: 'PI not found'
         },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
-      data: updatedTask
+      data: updatedPI
     });
   } catch (error) {
-    console.error(`Error in PUT /api/tasks/${id}:`, error);
+    console.error(`Error in PUT /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -98,10 +94,9 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -113,25 +108,25 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    
-    const deleted = await taskService.deleteTask(id, userId);
-    
+
+    const deleted = await piService.deletePI(params.id, userId);
+
     if (!deleted) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Task not found'
+          error: 'PI not found'
         },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
-      message: 'Task deleted successfully'
+      message: 'PI deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/tasks/${id}:`, error);
+    console.error(`Error in DELETE /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,

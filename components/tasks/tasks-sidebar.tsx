@@ -17,34 +17,80 @@ import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
+import { NextTaskSelector } from "./next-task-selector";
+
+// Owner interface
+interface Owner {
+  _id: string;
+  name: string;
+  userId: string;
+}
 
 interface TasksSidebarProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedJob: Job | null;
-  owners?: string[]; // Available owners list
+  onRefreshJobs?: () => void; // Simple callback to refresh jobs data
 }
 
 export function TasksSidebar({
   open,
   onOpenChange,
   selectedJob,
-  owners = [],
+  onRefreshJobs,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
+  const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
 
   const { toast } = useToast();
+
+  // Fetch owners from API
+  useEffect(() => {
+    const fetchOwners = async () => {
+      try {
+        const response = await fetch("/api/owners");
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch owners: ${response.status}`);
+        }
+
+        const ownersData = await response.json();
+        setOwners(ownersData);
+
+        // Create a mapping from owner ID to owner name
+        const mapping: Record<string, string> = {};
+        ownersData.forEach((owner: Owner) => {
+          mapping[owner._id] = owner.name;
+        });
+        setOwnerMap(mapping);
+      } catch (error) {
+        console.error("Error fetching owners:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch owners list",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchOwners();
+  }, [toast]);
 
   // Fetch tasks when job changes
   useEffect(() => {
     if (selectedJob) {
       fetchTasks();
+      // Set the next task ID from the job
+      setNextTaskId(selectedJob.nextTaskId);
     } else {
       setTasks([]);
+      setNextTaskId(undefined);
     }
   }, [selectedJob]);
 
@@ -67,8 +113,10 @@ export function TasksSidebar({
           focusLevel: task.focusLevel,
           joyLevel: task.joyLevel,
           notes: task.notes,
+          tags: task.tags || [],
           jobId: task.jobId,
           completed: task.completed,
+          isNextTask: task._id === selectedJob.nextTaskId,
         }));
 
         setTasks(formattedTasks);
@@ -112,6 +160,11 @@ export function TasksSidebar({
       const result = await response.json();
 
       if (result.success) {
+        // If the deleted task was the next task, we need to update the job
+        if (id === nextTaskId) {
+          await updateJobNextTask("none");
+        }
+
         setTasks(tasks.filter((task) => task.id !== id));
         toast({
           title: "Success",
@@ -147,6 +200,12 @@ export function TasksSidebar({
       const result = await response.json();
 
       if (result.success) {
+        // If the completed task was the next task, we need to update the job
+        if (completed && id === nextTaskId) {
+          // Clear the next task since it's now completed
+          await updateJobNextTask("none");
+        }
+
         setTasks(
           tasks.map((task) => (task.id === id ? { ...task, completed } : task))
         );
@@ -167,8 +226,99 @@ export function TasksSidebar({
     }
   };
 
+  const handleNextTaskChange = async (taskId: string): Promise<void> => {
+    if (!selectedJob) return;
+
+    try {
+      // Update the job with the new next task ID
+      const taskIdToSave = taskId === "none" ? null : taskId;
+
+      const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nextTaskId: taskIdToSave }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      // Update local state
+      setNextTaskId(taskIdToSave || undefined);
+
+      // Update isNextTask flag for all tasks
+      setTasks(
+        tasks.map((task) => ({
+          ...task,
+          isNextTask: task.id === taskIdToSave,
+        }))
+      );
+
+      // Call onRefreshJobs to trigger a refresh of all jobs data
+      if (typeof onRefreshJobs === "function") {
+        onRefreshJobs();
+      }
+
+      toast({
+        title: "Success",
+        description: "Next task updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating next task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update next task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateJobNextTask = async (taskId: string): Promise<void> => {
+    if (!selectedJob) return;
+
+    try {
+      const taskIdToSave = taskId === "none" ? null : taskId;
+
+      const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nextTaskId: taskIdToSave }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setNextTaskId(taskIdToSave || undefined);
+
+        // Update isNextTask flag for all tasks
+        setTasks(
+          tasks.map((task) => ({
+            ...task,
+            isNextTask: task.id === taskIdToSave,
+          }))
+        );
+      } else {
+        throw new Error(result.error || "Failed to update next task");
+      }
+    } catch (error) {
+      console.error("Error updating next task:", error);
+      throw error;
+    }
+  };
+
   const handleTaskSubmit = async (taskData: Partial<Task>) => {
     try {
+      // Make sure tags is always defined as an array
+      const processedTaskData = {
+        ...taskData,
+        tags: taskData.tags || [],
+      };
+
       if (dialogMode === "create") {
         // Create new task
         const response = await fetch("/api/tasks", {
@@ -176,7 +326,7 @@ export function TasksSidebar({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(taskData),
+          body: JSON.stringify(processedTaskData),
         });
 
         const result = await response.json();
@@ -192,9 +342,16 @@ export function TasksSidebar({
             focusLevel: result.data.focusLevel,
             joyLevel: result.data.joyLevel,
             notes: result.data.notes,
+            tags: result.data.tags || [],
             jobId: result.data.jobId,
             completed: result.data.completed,
+            isNextTask: false,
           };
+
+          // Add task ID to job's tasks array
+          if (selectedJob) {
+            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
+          }
 
           setTasks([...tasks, newTask]);
           toast({
@@ -217,7 +374,7 @@ export function TasksSidebar({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(taskData),
+          body: JSON.stringify(processedTaskData),
         });
 
         const result = await response.json();
@@ -233,8 +390,10 @@ export function TasksSidebar({
             focusLevel: result.data.focusLevel,
             joyLevel: result.data.joyLevel,
             notes: result.data.notes,
+            tags: result.data.tags || [],
             jobId: result.data.jobId,
             completed: result.data.completed,
+            isNextTask: result.data._id === nextTaskId,
           };
 
           setTasks(
@@ -265,9 +424,42 @@ export function TasksSidebar({
     }
   };
 
+  const updateJobTasks = async (taskIds: string[]): Promise<void> => {
+    if (!selectedJob) return;
+
+    try {
+      const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tasks: taskIds }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update job tasks");
+      }
+    } catch (error) {
+      console.error("Error updating job tasks:", error);
+      throw error;
+    }
+  };
+
   if (!selectedJob) {
     return null;
   }
+
+  // Sort tasks to show the next task first
+  const sortedTasks = [...tasks].sort((a, b) => {
+    // If a is the next task, it comes first
+    if (a.isNextTask) return -1;
+    // If b is the next task, it comes first
+    if (b.isNextTask) return 1;
+    // Otherwise, keep the original order
+    return 0;
+  });
 
   return (
     <>
@@ -295,14 +487,6 @@ export function TasksSidebar({
                   </p>
                 </div>
               )}
-              {selectedJob.owner && (
-                <div>
-                  <p className="text-sm font-medium">Owner:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedJob.owner}
-                  </p>
-                </div>
-              )}
               {selectedJob.businessFunctionName && (
                 <div>
                   <p className="text-sm font-medium">Business Function:</p>
@@ -326,6 +510,15 @@ export function TasksSidebar({
             </CardContent>
           </Card>
 
+          {/* Next Task Selector */}
+          {tasks.length > 0 && (
+            <NextTaskSelector
+              tasks={tasks}
+              onNextTaskChange={handleNextTaskChange}
+              currentNextTaskId={nextTaskId}
+            />
+          )}
+
           {/* Add Task Button */}
           <div className="mb-4">
             <Button onClick={handleAddTask} className="w-full">
@@ -343,9 +536,10 @@ export function TasksSidebar({
               columns={columns(
                 handleEditTask,
                 handleDeleteTask,
-                handleCompleteTask
+                handleCompleteTask,
+                ownerMap
               )}
-              data={tasks}
+              data={sortedTasks}
             />
           )}
         </SheetContent>
@@ -359,7 +553,6 @@ export function TasksSidebar({
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
         jobId={selectedJob.id}
-        owners={owners}
       />
     </>
   );

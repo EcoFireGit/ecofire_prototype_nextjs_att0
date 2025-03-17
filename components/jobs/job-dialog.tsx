@@ -38,10 +38,9 @@ const emptyFormState = {
   title: "",
   notes: "",
   owner: "",
-  businessFunctionId: "none",
+  businessFunctionId: 'none',
   dueDate: "",
   isDone: false,
-  impact: 0, // Added impact field
 };
 
 export function JobDialog({
@@ -65,7 +64,6 @@ export function JobDialog({
       owner: "",
       businessFunction: "",
       dueDate: "",
-      impact: 0, // Added impact field
     };
   });
 
@@ -76,12 +74,10 @@ export function JobDialog({
       setFormData({
         title: initialData.title || "",
         notes: initialData.notes || "",
-        owner: initialData.owner || "",
         businessFunctionId: initialData.businessFunctionId || "",
         dueDate: initialData.dueDate
           ? new Date(initialData.dueDate).toISOString().split("T")[0]
           : "",
-        impact: initialData.impact || 0, // Added impact field
       });
     }
   }, [mode, initialData, open]);
@@ -100,7 +96,7 @@ export function JobDialog({
             result.data.map((bf: any) => ({
               id: bf._id,
               name: bf.name,
-            })),
+            }))
           );
         } else {
           throw new Error(result.error || "Failed to fetch business functions");
@@ -176,19 +172,6 @@ export function JobDialog({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="owner" className="text-right">
-                Owner
-              </Label>
-              <Input
-                id="owner"
-                value={formData.owner}
-                onChange={(e) =>
-                  setFormData({ ...formData, owner: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="businessFunction" className="text-right">
                 Business Function
               </Label>
@@ -233,24 +216,6 @@ export function JobDialog({
                   setFormData({ ...formData, dueDate: e.target.value })
                 }
                 className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="impact" className="text-right">
-                Impact
-              </Label>
-              <Input
-                id="impact"
-                type="number"
-                value={formData.impact || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    impact: Number(e.target.value) || 0,
-                  })
-                }
-                className="col-span-3"
-                placeholder="Enter impact value"
               />
             </div>
           </div>

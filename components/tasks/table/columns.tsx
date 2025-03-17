@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge";
 export const columns = (
   onEdit: (task: Task) => void,
   onDelete: (id: string) => void,
-  onComplete: (id: string, completed: boolean) => void
+  onComplete: (id: string, completed: boolean) => void,
+  ownerMap: Record<string, string> = {}
 ): ColumnDef<Task>[] => [
   {
     id: "completed",
@@ -52,8 +53,16 @@ export const columns = (
     accessorKey: "owner",
     header: "Owner",
     cell: ({ row }) => {
-      const owner = row.getValue("owner") as string | undefined;
-      return owner || "Not assigned";
+      const ownerId = row.getValue("owner") as string | undefined;
+      
+      if (!ownerId) return "Not assigned";
+      
+      // Look up the owner name from the ownerMap
+      const ownerName = ownerMap[ownerId];
+      
+      // If the owner doesn't exist in our map (possibly deleted)
+      // return "Not assigned" - same as if no owner was set
+      return ownerName || "Not assigned"; 
     },
   },
   {
@@ -131,6 +140,48 @@ export const columns = (
       return (
         <div className="max-h-[160px] min-h-[60px] w-[300px] overflow-y-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm break-words whitespace-normal">
           {notes}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "tags",
+    header: "Tags",
+    cell: ({ row }) => {
+      const tags = row.getValue("tags") as string[] | undefined;
+      
+      if (!tags || tags.length === 0) return "No tags";
+      
+      // Function to generate a consistent color for a tag
+      const getTagColor = (tag: string) => {
+        // Generate a hash code from the tag string
+        const hashCode = tag.split('').reduce((acc, char) => {
+          return char.charCodeAt(0) + ((acc << 5) - acc);
+        }, 0);
+        
+        // Map to HSL color space for better distribution of colors
+        // Use higher saturation and limited lightness range for better readability
+        const h = Math.abs(hashCode % 360);
+        const s = 65 + (hashCode % 20); // 65-85% saturation
+        const l = 55 + (hashCode % 15); // 55-70% lightness - not too dark, not too light
+        
+        return `hsl(${h}, ${s}%, ${l}%)`;
+      };
+      
+      return (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {tags.map((tag, index) => (
+            <span
+              key={`${tag}-${index}`}
+              className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white shadow-sm"
+              style={{ 
+                backgroundColor: getTagColor(tag),
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       );
     },
